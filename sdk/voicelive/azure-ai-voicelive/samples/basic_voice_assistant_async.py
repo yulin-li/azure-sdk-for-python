@@ -13,16 +13,16 @@ FILE: basic_voice_assistant_async.py
 DESCRIPTION:
     This sample demonstrates the fundamental capabilities of the VoiceLive SDK by creating
     a basic voice assistant that can engage in natural conversation with proper interruption
-    handling. This serves as the foundational example that showcases the core value 
+    handling. This serves as the foundational example that showcases the core value
     proposition of unified speech-to-speech interaction.
 
 USAGE:
     python basic_voice_assistant_async.py
-    
+
     Set the environment variables with your own values before running the sample:
     1) AZURE_VOICELIVE_API_KEY - The Azure VoiceLive API key
     2) AZURE_VOICELIVE_ENDPOINT - The Azure VoiceLive endpoint
-    
+
     Or copy .env.template to .env and fill in your values.
 
 REQUIREMENTS:
@@ -50,6 +50,7 @@ from azure.identity.aio import AzureCliCredential, DefaultAzureCredential
 from azure.ai.voicelive.aio import connect
 from azure.ai.voicelive.models import (
     AudioEchoCancellation,
+    AudioInputTranscriptionOptions,
     AudioNoiseReduction,
     AzureStandardVoice,
     InputAudioFormat,
@@ -272,6 +273,7 @@ class BasicVoiceAssistant:
         model: str,
         voice: str,
         instructions: str,
+        transcription_model: str = "azure-speech",
     ):
 
         self.endpoint = endpoint
@@ -279,6 +281,7 @@ class BasicVoiceAssistant:
         self.model = model
         self.voice = voice
         self.instructions = instructions
+        self.transcription_model = transcription_model
         self.connection: Optional["VoiceLiveConnection"] = None
         self.audio_processor: Optional[AudioProcessor] = None
         self.session_ready = False
@@ -347,6 +350,9 @@ class BasicVoiceAssistant:
             turn_detection=turn_detection_config,
             input_audio_echo_cancellation=AudioEchoCancellation(),
             input_audio_noise_reduction=AudioNoiseReduction(type="azure_deep_noise_suppression"),
+            input_audio_transcription=AudioInputTranscriptionOptions(
+                model=self.transcription_model
+            ),
         )
 
         conn = self.connection
@@ -387,12 +393,6 @@ class BasicVoiceAssistant:
 
             # skip queued audio
             ap.skip_pending_audio()
-
-            # Cancel any ongoing response
-            try:
-                await conn.response.cancel()
-            except Exception:
-                logger.exception("No response to cancel")
 
         elif event.type == ServerEventType.INPUT_AUDIO_BUFFER_SPEECH_STOPPED:
             logger.info("🎤 User stopped speaking")
@@ -471,6 +471,13 @@ def parse_arguments():
     )
 
     parser.add_argument(
+        "--transcription-model",
+        help="Transcription model to use. If not provided, will use AZURE_VOICELIVE_TRANSCRIPTION_MODEL environment variable.",
+        type=str,
+        default=os.environ.get("AZURE_VOICELIVE_TRANSCRIPTION_MODEL", "azure-speech"),
+    )
+
+    parser.add_argument(
         "--use-token-credential",
         help="Use Azure token credential instead of API key",
         action="store_true",
@@ -513,6 +520,7 @@ def main():
         model=args.model,
         voice=args.voice,
         instructions=args.instructions,
+        transcription_model=args.transcription_model,
     )
 
     # Setup signal handlers for graceful shutdown

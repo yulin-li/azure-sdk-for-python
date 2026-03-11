@@ -18,12 +18,12 @@ DESCRIPTION:
 
 USAGE:
     python basic_transcribe_only_async.py
-    
+
     Set the environment variables with your own values before running the sample:
     1) AZURE_VOICELIVE_API_KEY - The Azure VoiceLive API key
     2) AZURE_VOICELIVE_ENDPOINT - The Azure VoiceLive endpoint
     3) AZURE_VOICELIVE_TRANSCRIPTION_MODEL - (Optional) The transcription model to use (e.g. "whisper-1")
-    
+
     Or copy .env.template to .env and fill in your values.
 
 REQUIREMENTS:
@@ -166,10 +166,12 @@ class TranscribeOnlyAssistant:
         self,
         endpoint: str,
         credential: Union[AzureKeyCredential, AsyncTokenCredential],
+        transcription_model: str = "azure-speech",
     ):
 
         self.endpoint = endpoint
         self.credential = credential
+        self.transcription_model = transcription_model
         self.connection: Optional["VoiceLiveConnection"] = None
         self.audio_processor: Optional[AudioProcessor] = None
         self.session_ready = False
@@ -183,6 +185,7 @@ class TranscribeOnlyAssistant:
             async with connect(
                 endpoint=self.endpoint,
                 credential=self.credential,
+                model="gpt-4.1",  # model is required but will not be used for response generation in transcription-only mode
             ) as connection:
                 conn = connection
                 self.connection = conn
@@ -226,7 +229,7 @@ class TranscribeOnlyAssistant:
             turn_detection=turn_detection_config,
             input_audio_noise_reduction=AudioNoiseReduction(type="azure_deep_noise_suppression"),
             input_audio_transcription=AudioInputTranscriptionOptions(
-                model=os.environ.get("AZURE_VOICELIVE_TRANSCRIPTION_MODEL", "whisper-1")
+                model=self.transcription_model
             ),
         )
 
@@ -313,6 +316,13 @@ def parse_arguments():
         default=True,
     )
 
+    parser.add_argument(
+        "--transcription-model",
+        help="Transcription model to use. If not provided, will use AZURE_VOICELIVE_TRANSCRIPTION_MODEL environment variable.",
+        type=str,
+        default=os.environ.get("AZURE_VOICELIVE_TRANSCRIPTION_MODEL", "azure-speech"),
+    )
+
     parser.add_argument("--verbose", help="Enable verbose logging", action="store_true")
 
     return parser.parse_args()
@@ -346,6 +356,7 @@ def main():
     assistant = TranscribeOnlyAssistant(
         endpoint=args.endpoint,
         credential=credential,
+        transcription_model=args.transcription_model,
     )
 
     # Setup signal handlers for graceful shutdown
