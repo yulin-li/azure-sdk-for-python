@@ -55,6 +55,7 @@ from azure.ai.voicelive.models import (
     AzureStandardVoice,
     InputAudioFormat,
     Modality,
+    OpenAIVoice,
     OutputAudioFormat,
     RequestSession,
     ServerEventType,
@@ -329,13 +330,13 @@ class BasicVoiceAssistant:
         logger.info("Setting up voice conversation session...")
 
         # Create strongly typed voice configuration
-        voice_config: Union[AzureStandardVoice, str]
+        voice_config: Union[AzureStandardVoice, OpenAIVoice]
         if self.voice.startswith("en-US-") or self.voice.startswith("en-CA-") or "-" in self.voice:
             # Azure voice
             voice_config = AzureStandardVoice(name=self.voice)
         else:
             # OpenAI voice (alloy, echo, fable, onyx, nova, shimmer)
-            voice_config = self.voice
+            voice_config = OpenAIVoice(name=self.voice)
 
         # Create strongly typed turn detection configuration
         turn_detection_config = ServerVad(threshold=0.5, prefix_padding_ms=300, silence_duration_ms=500)
